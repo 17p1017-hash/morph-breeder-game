@@ -135,7 +135,7 @@ async function lookupCommons(g){
  }).filter(Boolean);
 }
 async function firstUsablePhoto(candidates){
- const checked=candidates.slice(0,8);
+ const checked=candidates.slice(0,12);
  if(!checked.length)return null;
  // URLは並行して検証する。成功した結果だけを1枚採用する。
  const results=await Promise.all(checked.map(async x=>await imageIsUsable(x.url)?x:null));
