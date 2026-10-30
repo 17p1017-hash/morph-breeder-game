@@ -64,7 +64,7 @@ function hatch(){
  for(const p of newPairs)data.doubleHomoDiscovered.push(p.key);
  const p=photoOf(baby.g);
  const discover=newPairs.length?`<div class="panel" style="border:2px solid #f0c35b;text-align:center;background:rgba(240,195,91,.12)"><h2>🌟 NEW！ 隠しモルフ発見！</h2><p>${newPairs.map(x=>x.name).join(' ・ ')}</p><p class="muted">2種類の劣性遺伝子をそれぞれ2コピー持つ、ダブルホモ接合体！</p></div>`:'';
- document.getElementById('result').innerHTML=`<div class="panel outcome"><h2>🎉 誕生！ #${baby.id}</h2>${discover}${photoMarkup(baby.g,'モルフ参考写真')}<h3>${nameOf(baby.g)}</h3><p class="muted">${p.label}</p><p>性別：${baby.sex}　｜　遺伝情報：${Object.entries(baby.g).map(([k,v])=>k+':'+v+'コピー').join('、')||'ノーマル'}</p><p class="muted">劣性遺伝のヘテロ接合は外見に出なくても次世代に伝わります。</p><button onclick="tab('missions')">ミッションを確認</button></div>`;
+ document.getElementById('result').innerHTML=`<div class="panel outcome"><h2>🎉 誕生！ #${baby.id}　${baby.sex==='♂'?'♂ オス':'♀ メス'}</h2>${discover}${photoMarkup(baby.g,'モルフ参考写真')}<h3>${nameOf(baby.g)}</h3><p style="font-size:1.25rem;font-weight:800;padding:10px;border:2px solid currentColor;border-radius:10px">性別：${baby.sex==='♂'?'♂ オス':'♀ メス'}</p><p class="muted">${p.label}</p><p>遺伝情報：${Object.entries(baby.g).map(([k,v])=>k+':'+v+'コピー').join('、')||'ノーマル'}</p><p class="muted">劣性遺伝のヘテロ接合は外見に出なくても次世代に伝わります。</p><button onclick="tab('missions')">ミッションを確認</button></div>`;
  refresh();applyExternalPhotos(document.getElementById('result'));
  msg(newPairs.length?'🌟 新しいダブルホモ接合体を発見！':'新しい個体がコレクションに加わりました');
 }
