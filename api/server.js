@@ -29,7 +29,7 @@ function json(res, status, data, origin){
 function normalize(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ');}
 function parseGenes(value){
  const names = value.split(',').map(normalize).map(s=>alias.get(s)||s);
- if(names.length<2 || names.length>4 || names.some(n=>!ALLOWED_MORPHS.has(n)))return null;
+ if(names.length<1 || names.length>4 || names.some(n=>!ALLOWED_MORPHS.has(n)))return null;
  if(new Set(names).size !== names.length)return null;
  return names.sort();
 }
@@ -53,7 +53,7 @@ http.createServer(async(req,res)=>{
  if(origin && origin !== ALLOWED_ORIGIN) {json(res,403,{error:'Forbidden origin'},origin);return;}
  if(!API_KEY){json(res,503,{error:'SERPAPI_KEY not configured'},origin);return;}
  const genes=parseGenes(url.searchParams.get('genes')||'');
- if(!genes){json(res,400,{error:'Specify 2-4 known morph names separated by commas'},origin);return;}
+ if(!genes){json(res,400,{error:'Specify 1-4 known morph names separated by commas'},origin);return;}
  const key=genes.join('|');
  const old=cache.get(key);
  if(old && Date.now()-old.when<TTL_MS){json(res,200,{...old.data,cached:true},origin);return;}
@@ -61,7 +61,7 @@ http.createServer(async(req,res)=>{
  if(monthly.month!==month)monthly={month,count:0};
  if(monthly.count>=MAX_LOOKUPS){json(res,429,{error:'Monthly search budget reached'},origin);return;}
  monthly.count++;
- const query='"'+genes.join(' ')+'" "ball python"';
+ const query=(genes.length===1 ? '"'+genes[0]+'" "ball python" morph' : '"'+genes.join(' ')+'" "ball python"');
  const endpoint = new URL('https://serpapi.com/search.json');
  endpoint.search = new URLSearchParams({engine:'google_images',q:query,api_key:API_KEY,num:'30',safe:'active'}).toString();
  try{
