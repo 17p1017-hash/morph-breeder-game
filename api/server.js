@@ -8,7 +8,9 @@ const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const ALLOWED_MORPHS = new Set([
  'pastel','banana','mojave','enchi','yellow belly','ghi','albino','pied',
  'red stripe','spark','ghost','desert ghost','clown','leopard','orange dream',
- 'fire','axanthic','phantom','spider','lace','hidden gene woma','champagne','confusion'
+ 'fire','axanthic','phantom','spider','lace','hidden gene woma','champagne','confusion',
+ 'cinnamon','black pastel','pinstripe','lesser','spotnose','bamboo',
+ 'lavender albino','genetic stripe','sunset','acid'
 ]);
 const alias = new Map([['piebald','pied'],['hypo','ghost'],['dg','desert ghost']]);
 const MAX_LOOKUPS = Math.max(1, Math.min(200, Number(process.env.MAX_SEARCHES_PER_MONTH || 175)));
