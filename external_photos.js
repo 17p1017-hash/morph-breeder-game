@@ -99,7 +99,14 @@ let apiActive=0;
 const apiQueue=[];
 function photoGeneKey(g){return JSON.stringify(Object.entries(visibleGenes(g)).sort(([a],[b])=>a.localeCompare(b,'ja')))}
 function photoNames(g){return Object.entries(visibleGenes(g)).map(([k,v])=>({k,v,eng:MORPH_ENGLISH[k]}));}
-function remoteEligible(g){const a=photoNames(g);return a.length>=2&&a.length<=3&&a.every(x=>!!x.eng&&x.v===1 || !!x.eng&&GENES[x.k]==='rec'&&x.v===2)}
+const NEW_SINGLE_MORPHS=new Set(['シナモン','ブラックパステル','ピンストライプ','レッサー','スポットノーズ','バンブー','ラベンダーアルビノ','ジェネティックストライプ','サンセット','アシッド']);
+function remoteEligible(g){
+ const a=photoNames(g);
+ if(!a.length||a.length>3)return false;
+ if(!a.every(x=>!!x.eng&&(x.v===1||(GENES[x.k]==='rec'&&x.v===2))))return false;
+ if(a.length===1)return NEW_SINGLE_MORPHS.has(a[0].k);
+ return true;
+}
 function photoAttr(g){return ' data-morph-genotype="'+encodeURIComponent(JSON.stringify(g))+'"';}
 function photoMarkup(g,alt){let p=photoOf(g);return '<img src="'+p.src+'"'+photoAttr(g)+' alt="'+alt+'">';}
 function imageIsUsable(url){return new Promise(resolve=>{let image=new Image();const timer=setTimeout(()=>{image.onload=null;image.onerror=null;resolve(false)},9000);image.onload=()=>{clearTimeout(timer);resolve(true)};image.onerror=()=>{clearTimeout(timer);resolve(false)};image.src=url;});}
@@ -142,7 +149,7 @@ const EXTRA_MORPH_TERMS=[
  'red stripe','spark','ghost','desert ghost','clown','leopard','orange dream',
  'fire','axanthic','phantom','spider','lace','hidden gene woma',
  'champagne','confusion','asphalt','scaleless','cinnamon','black pastel',
- 'lesser','butter','pinstripe','calico','super','het'
+ 'lesser','butter','pinstripe','calico','super','het','spotnose','bamboo','lavender albino','genetic stripe','sunset','acid','cinnamon','black pastel'
 ];
 function photoTitleScore(item,requested){
  const title=String(item.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
@@ -224,7 +231,7 @@ function applyExternalPhotos(root=document){
   }
   const key=photoGeneKey(g);
   const fallback=img.getAttribute('src');
-  img.title='複合モルフの実写写真を外部サイトで確認中…';
+  img.title='モルフの実写写真を外部サイトで確認中…';
   resolveExternalPhoto(g).then(result=>{
    if(!img.isConnected||photoGeneKey(g)!==key)return;
    if(!result){photoStatus(g,PHOTO_DEBUG[key]||'写真候補が見つからないか、画像を読み込めません');return;}
@@ -233,7 +240,7 @@ function applyExternalPhotos(root=document){
    img.onerror=()=>{img.onerror=null;img.dataset.photoLoaded='no';img.src=fallback;photoStatus(g,'外部画像の表示が拒否されました');};
    img.onload=()=>{img.dataset.photoLoaded='yes'};img.src=result.url;
    const note=img.closest('.animal,.slot,.outcome')?.querySelector('small,.muted');
-   if(note)note.textContent='実在する複合モルフの写真（外部参照）';
+   if(note)note.textContent='モルフの参考写真（外部参照・遺伝子型は掲載元で確認）';
    img.title='写真の出典: '+(result.page||'外部サイト')+' · '+(result.license||'')+(result.credit?' · '+result.credit:'');
   });
  }
