@@ -69,11 +69,16 @@ http.createServer(async(req,res)=>{
   if(!response.ok)throw new Error('SerpApi response '+response.status);
   const result=await response.json();
   if(result.error)throw new Error('Image API error');
+  // 元画像への直リンクが拒否される場合に備え、サムネイルも候補にする。
+  // ラベンダーアルビノは英語名を分割して検索すると別モルフが混入するため、
+  // タイトルに両語が含まれるものだけを採用する。
   const candidates=(result.images_results||[])
    .filter(item=>titleCompatible(`${item.title||''} ${item.source||''}`, genes))
-   .map(item=>({url:item.original || item.thumbnail, title:item.title||'',page:item.link||'',source:item.source||''}))
-   .filter(item=>isImageUrl(item.url))
-   .slice(0,5);
+   .flatMap(item=>[item.original,item.thumbnail].filter(isImageUrl).map(imageUrl=>({
+     url:imageUrl,title:item.title||'',page:item.link||'',source:item.source||''
+   })))
+   .filter((item,i,all)=>all.findIndex(x=>x.url===item.url)===i)
+   .slice(0,12);
   const data={genes,candidates,note:'Search results are candidate photos. Confirm genetics and reuse rights before publication.'};
   cache.set(key,{when:Date.now(),data});
   json(res,200,data,origin);
