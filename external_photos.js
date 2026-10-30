@@ -8,7 +8,11 @@ const MORPH_ENGLISH={
  'ゴースト':'ghost','デザートゴースト':'desert ghost','クラウン':'clown','レオパード':'leopard',
  'オレンジドリーム':'orange dream','ファイア':'fire','アザンティック':'axanthic',
  'ファントム':'phantom','スパイダー':'spider','レース':'lace','ヒドゥンジンウォマ':'hidden gene woma',
- 'シャンパン':'champagne','コンヒュージョン':'confusion'
+ 'シャンパン':'champagne','コンヒュージョン':'confusion',
+ 'シナモン':'cinnamon','ブラックパステル':'black pastel','ピンストライプ':'pinstripe',
+ 'レッサー':'lesser','スポットノーズ':'spotnose','バンブー':'bamboo',
+ 'ラベンダーアルビノ':'lavender albino','ジェネティックストライプ':'genetic stripe',
+ 'サンセット':'sunset','アシッド':'acid'
 };
 // 出典を確認した実写写真の外部参照候補。画像自体はゲームに同梱していません。
 // 配信先で直リンクが拒否された場合は Wikimedia Commons 検索に切り替えます。

@@ -12,7 +12,29 @@ const missions=[{id:'first',title:'はじめての孵化',desc:'1匹の赤ちゃ
 document.addEventListener('error', function(e){if(e.target&&e.target.tagName==='IMG'&&e.target.src.startsWith('http')){e.target.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0ODAiIGhlaWdodD0iMzIwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzE0NjQ1Ii8+PHRleHQgeD0iMjQwIiB5PSIxNDUiIGZpbGw9IiNmZmYiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7lhpnnnJ/jgpLoqq3jgb/ovrzjgoHjgb7jgZvjgpM8L3RleHQ+PHRleHQgeD0iMjQwIiB5PSIxODIiIGZpbGw9IiNjYmQiIGZvbnQtc2l6ZT0iMTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuODjeODg+ODiOaOpee2muOCkueiuuiqjeOBl+OBpuOBj+OBoOOBleOBhDwvdGV4dD48L3N2Zz4=';}}, true);
 function save(){try{localStorage.setItem('morph-breeder-v1',JSON.stringify(data))}catch(e){}}
 function msg(t){let e=document.getElementById('message');e.textContent=t;e.style.display='block';clearTimeout(window.mt);window.mt=setTimeout(()=>e.style.display='none',3000)}
-function genetics(g1,g2){let out={};for(const gene of Object.keys(GENES)){let aa=g1[gene]||0,bb=g2[gene]||0,v=(Math.random()<aa/2?1:0)+(Math.random()<bb/2?1:0);if(v)out[gene]=v;}return out}
+// 同じ遺伝子座にある既知のアレルは、各親から一つずつ受け継ぐ（学習用簡略モデル）。
+const SHARED_LOCUS_GROUPS=[['モハベ','レッサー','バンブー','ファントム'],['シナモン','ブラックパステル']];
+const SHARED_LOCUS_GENES=new Set(SHARED_LOCUS_GROUPS.flat());
+function parentAlleles(g,group){
+ const alleles=[];
+ for(const gene of group)for(let i=0;i<Math.min(2,g[gene]||0);i++)alleles.push(gene);
+ // 古いセーブデータで同一座位が3コピー以上になっていた場合は先頭2コピーを採用。
+ return [...alleles.slice(0,2),...Array(Math.max(0,2-alleles.length)).fill(null)];
+}
+function genetics(g1,g2){
+ const out={};
+ for(const gene of Object.keys(GENES)){
+  if(SHARED_LOCUS_GENES.has(gene))continue;
+  const aa=g1[gene]||0,bb=g2[gene]||0;
+  const v=(Math.random()<aa/2?1:0)+(Math.random()<bb/2?1:0);
+  if(v)out[gene]=v;
+ }
+ for(const group of SHARED_LOCUS_GROUPS){
+  const a=parentAlleles(g1,group),b=parentAlleles(g2,group);
+  for(const gene of [a[Math.floor(Math.random()*2)],b[Math.floor(Math.random()*2)]])if(gene)out[gene]=(out[gene]||0)+1;
+ }
+ return out;
+}
 function displaySnake(s){let p=photoOf(s.g);return `${photoMarkup(s.g,"蛇の写真")}<div><b>#${s.id} ${nameOf(s.g)}</b><small>${s.sex} ${p.label}</small></div>`}
 function refresh(){document.getElementById('money').textContent=data.money;document.getElementById('count').textContent=data.snakes.length;document.getElementById('wins').textContent=data.done.length;renderParents();renderCollection();renderShop();renderMissions();renderPractice();save();applyExternalPhotos()}
 function tab(id){for(let s of document.querySelectorAll('main>section'))s.hidden=s.id!==id;for(let b of document.querySelectorAll('nav button'))b.classList.toggle('active',b.id==='tab-'+id);refresh()}
@@ -135,7 +157,7 @@ function renderShop(){let e=document.getElementById('shop-grid');e.innerHTML='';
 function buy(g,sex){if(data.money<prices[g])return msg('コインが足りません');data.money-=prices[g];data.snakes.push({id:++data.id,g:{[g]:GENES[g]==='rec'?2:1},sex});refresh();msg(g+'を購入しました！')}
 function renderMissions(){let e=document.getElementById('mission-list');e.innerHTML='';missions.forEach(m=>{let done=data.done.includes(m.id),available=m.check();let div=document.createElement('div');div.className='panel';div.innerHTML=`<b>${done?'✅ ':available?'⭐ ':'🔒 '}${m.title}</b><div class="muted">${m.desc}　｜　報酬 ${m.pay}コイン</div><button ${done||!available?'disabled':''} onclick="writeMission('${m.id}')">${done?'クリア済み':available?'カタカナ練習へ':'未達成'}</button>`;e.append(div)})}
 function writeMission(id){const m=missions.find(m=>m.id===id);if(!m||data.done.includes(id)||!m.check())return;missionPending=m;const e=document.getElementById('mission-list');e.innerHTML=`<div class="panel writing"><h2>✏️ カタカナミッション</h2><p>次のモルフ名をカタカナで、下の白い枠に指やペンで書こう。</p><h2 style="text-align:center;font-size:28px">${m.word}</h2><p class="writing-note">文字数に合わせて書く場所が広がります。長い言葉は左右に動かして書こう。</p><div class="writing-scroll" id="pad-scroll"><canvas id="pad"></canvas></div><div class="flex" style="margin-top:10px"><button onclick="erasePad()">書き直す</button><button class="primary" onclick="completeWriting()">先生と確認してクリア</button><button onclick="renderMissions()">戻る</button></div><p class="muted">自動採点はしません。書いた文字を先生と確認してからクリアしてください。</p></div>`;setTimeout(initPad,0)}
-const practiceWords=['パステル','バナナ','アルビノ','パイド','モハベ','エンチ','イエローベリー','ジーエイチアイ','レッドストライプ','スパーク','ゴースト','デザートゴースト','クラウン','レオパード','オレンジドリーム','ファイア','ショップ','キャリー','キャリーケース','シェルター','ピンセット','チューブ','キャップ','アザンティック','ファントム','スパイダー','レース','ヒドゥンジンウォマ','シャンパン','コンヒュージョン','ヘテロ'];
+const practiceWords=['パステル','バナナ','アルビノ','パイド','モハベ','エンチ','イエローベリー','ジーエイチアイ','レッドストライプ','スパーク','ゴースト','デザートゴースト','クラウン','レオパード','オレンジドリーム','ファイア','ショップ','キャリー','キャリーケース','シェルター','ピンセット','チューブ','キャップ','アザンティック','ファントム','スパイダー','レース','ヒドゥンジンウォマ','シャンパン','コンヒュージョン','シナモン','ブラックパステル','ピンストライプ','レッサー','スポットノーズ','バンブー','ラベンダーアルビノ','ジェネティックストライプ','サンセット','アシッド','ヘテロ'];
 let practiceWord=null,practiceOpen=false,practiceCompleted=0,practiceHistory=[];
 if(!Number.isInteger(data.practiceProgress)||data.practiceProgress<0||data.practiceProgress>2)data.practiceProgress=0;
 function nextPractice(){const candidates=practiceWords.filter(w=>!practiceHistory.slice(-4).includes(w));practiceWord=candidates[Math.floor(Math.random()*candidates.length)]||practiceWords[Math.floor(Math.random()*practiceWords.length)];practiceOpen=true;renderPractice();setTimeout(initPad,0)}

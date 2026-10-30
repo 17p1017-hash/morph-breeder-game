@@ -10,7 +10,8 @@ const DOUBLE_HOMO_NAMES={
  'アザンティック|パイド':'アザンティックパイド',
  'アザンティック|クラウン':'アザンティッククラウン',
  'アルビノ|クラウン':'アルビノクラウン',
- 'ゴースト|パイド':'ゴーストパイド'
+ 'ゴースト|パイド':'ゴーストパイド',
+ 'パイド|ラベンダーアルビノ':'ドリームシクル'
 };
 function homoRecessiveGenes(g){return Object.keys(g).filter(k=>GENES[k]==='rec'&&g[k]===2).sort((a,b)=>a.localeCompare(b,'ja'));}
 function doubleHomoMatches(g){
@@ -60,7 +61,7 @@ function photoCaption(g){return photoOf(g).label;}
 
 // 外部参照の候補を検索するためのURL生成（画面上には表示しない）
 function imageSearchUrl(g){
- const traits=Object.entries(g).filter(([k,v])=>GENES[k]==='rec'?v===2:v>0).map(([k,v])=>((GENES[k]!=='rec'&&v===2)?'super ':'')+({GHI:'GHI','アザンティック':'axanthic','ヒドゥンジンウォマ':'hidden gene woma','コンヒュージョン':'confusion','レッドストライプ':'red stripe','イエローベリー':'yellow belly','デザートゴースト':'desert ghost','オレンジドリーム':'orange dream','ファイア':'fire','モハベ':'mojave','エンチ':'enchi','パステル':'pastel','バナナ':'banana','アルビノ':'albino','パイド':'pied','スパーク':'spark','ゴースト':'ghost','クラウン':'clown','レオパード':'leopard','ファントム':'phantom','スパイダー':'spider','レース':'lace','シャンパン':'champagne'}[k]||k));
+ const traits=Object.entries(g).filter(([k,v])=>GENES[k]==='rec'?v===2:v>0).map(([k,v])=>((GENES[k]!=='rec'&&v===2)?'super ':'')+({GHI:'GHI','アザンティック':'axanthic','ヒドゥンジンウォマ':'hidden gene woma','コンヒュージョン':'confusion','レッドストライプ':'red stripe','イエローベリー':'yellow belly','デザートゴースト':'desert ghost','オレンジドリーム':'orange dream','ファイア':'fire','モハベ':'mojave','エンチ':'enchi','パステル':'pastel','バナナ':'banana','アルビノ':'albino','パイド':'pied','スパーク':'spark','ゴースト':'ghost','クラウン':'clown','レオパード':'leopard','ファントム':'phantom','スパイダー':'spider','レース':'lace','シャンパン':'champagne','シナモン':'cinnamon','ブラックパステル':'black pastel','ピンストライプ':'pinstripe','レッサー':'lesser','スポットノーズ':'spotnose','バンブー':'bamboo','ラベンダーアルビノ':'lavender albino','ジェネティックストライプ':'genetic stripe','サンセット':'sunset','アシッド':'acid'}[k]||k));
  const query=(traits.length?traits.join(' '):'normal')+' ball python morph';
  return 'https://www.google.com/search?tbm=isch&q='+encodeURIComponent(query);
 }
