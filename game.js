@@ -1,6 +1,7 @@
 
 let data; try{data=JSON.parse(localStorage.getItem('morph-breeder-v1'))}catch(e){};
 if(!data||!Array.isArray(data.snakes)){data={money:280,id:3,snakes:[{id:1,g:{'パステル':1},sex:'♂'},{id:2,g:{'エンチ':1},sex:'♀'}],done:[],hatched:0,discovered:[]}}
+if(!Number.isFinite(data.entryTickets))data.entryTickets=0;
 let selection=[],pending=null,missionPending=null;
 let saleSelection=new Set();
 // アップデート前に育てた個体も「発見済み」に引き継ぐ。
@@ -35,15 +36,19 @@ function genetics(g1,g2){
  }
  return out;
 }
-function displaySnake(s){let p=photoOf(s.g);return `${photoMarkup(s.g,"蛇の写真")}<div><b>#${s.id} ${nameOf(s.g)}</b><small>${s.sex} ${p.label}</small></div>`}
-function refresh(){document.getElementById('money').textContent=data.money;document.getElementById('count').textContent=data.snakes.length;document.getElementById('wins').textContent=data.done.length;renderParents();renderCollection();renderShop();renderMissions();renderPractice();save();applyExternalPhotos()}
+function factorText(s){const f=typeof factorOf==='function'?factorOf(s):(s.factors||[1,1,1]);return ['発色','模様','体格'].map((n,i)=>n+' '+('★'.repeat(f[i]||0)||'なし')).join(' / ')}
+function contestText(s){const c=s.training?.contests||[];return c.length?'🏆 出場ずみ：'+c.map(i=>['ビギナー杯','モルフ杯','世界選手権'][i]).join('・'):''}
+function displaySnake(s){let p=photoOf(s.g);return `${photoMarkup(s.g,"蛇の写真")}<div><b>${s.locked?'🔒 ':''}#${s.id} ${nameOf(s.g)}</b><small>${s.sex} ${p.label}</small><small>${factorText(s)}</small>${contestText(s)?'<small>'+contestText(s)+'</small>':''}</div>`}
+function toggleSnakeLock(id){const s=data.snakes.find(x=>x.id===id);if(!s)return;s.locked=!s.locked;if(s.locked)saleSelection.delete(id);refresh();msg(s.locked?'🔒 このヘビを ロックしました':'🔓 ロックを はずしました')}
+
+function refresh(){document.getElementById('money').textContent=data.money;const ticketCount=document.getElementById('ticket-count');if(ticketCount)ticketCount.textContent=data.entryTickets;document.getElementById('count').textContent=data.snakes.length;document.getElementById('wins').textContent=data.done.length;renderParents();renderCollection();renderShop();renderMissions();renderPractice();save();applyExternalPhotos()}
 function tab(id){for(let s of document.querySelectorAll('main>section'))s.hidden=s.id!==id;for(let b of document.querySelectorAll('nav button'))b.classList.toggle('active',b.id==='tab-'+id);refresh()}
 function renderParents(){
  let area=document.getElementById('parents');area.innerHTML='';
  data.snakes.forEach(s=>{let b=document.createElement('button');b.className='animal '+(selection.includes(s.id)?'selected':'');b.innerHTML=displaySnake(s);b.onclick=()=>choose(s.id);area.append(b)});
  ['A','B'].forEach((x,i)=>{
    let box=document.getElementById('parent'+x),s=data.snakes.find(s=>s.id===selection[i]);
-   box.innerHTML=s?`<div>${photoMarkup(s.g,"親"+x)}<b>#${s.id} ${nameOf(s.g)}</b><small>${s.sex}</small><small>${photoCaption(s.g)}</small></div>`:`親${x}：未選択`;
+   box.innerHTML=s?`<div>${photoMarkup(s.g,"親"+x)}<b>#${s.id} ${nameOf(s.g)}</b><small>${s.sex}</small><small>${photoCaption(s.g)}</small><small>${factorText(s)}</small><small>${contestText(s)}</small></div>`:`親${x}：未選択`;
    document.getElementById('genes'+x).innerHTML=s?`<b>親${x}の遺伝情報</b><div>${geneDetails(s.g)}</div>`:'親を選ぶと遺伝情報が出ます';
  });
  let a=data.snakes.find(s=>s.id===selection[0]),b=data.snakes.find(s=>s.id===selection[1]);
@@ -89,22 +94,22 @@ function salePrice(s){
   if(supers>=2)value+=30*(supers-1);
   return Math.max(20,Math.round(value/5)*5);
 }
-function canSell(s){return data.snakes.filter(x=>x.sex===s.sex).length>1;}
+function canSell(s){return !s.locked && data.snakes.filter(x=>x.sex===s.sex).length>1;}
 function validSale(ids){
   const selected=data.snakes.filter(s=>ids.has(s.id));
   const males=data.snakes.filter(s=>s.sex==='♂').length-selected.filter(s=>s.sex==='♂').length;
   const females=data.snakes.filter(s=>s.sex==='♀').length-selected.filter(s=>s.sex==='♀').length;
-  return selected.length>0&&males>=1&&females>=1;
+  return selected.length>0&&selected.every(s=>!s.locked)&&males>=1&&females>=1;
 }
 function sellSnake(id){
   const snake=data.snakes.find(x=>x.id===id);
   if(!snake)return msg('個体が見つかりません');
-  if(!canSell(snake))return msg('オスとメスは最低1匹ずつ残してください');
+  if(snake.locked)return msg('🔒 ロック中のヘビは売れません');if(!canSell(snake))return msg('オスとメスは最低1匹ずつ残してください');
   if(!window.confirm(`#${snake.id} ${nameOf(snake.g)}（${snake.sex}）を ${salePrice(snake)}コインで売りますか？\\n売却した個体は戻せません。`))return;
   sellIds(new Set([id]));
 }
 function sellIds(ids){
-  if(!validSale(ids))return msg('オスとメスを最低1匹ずつ残してください');
+  if(!validSale(ids))return msg('ロック中のヘビは売れません。オスとメスも各1匹残してください');
   const selected=data.snakes.filter(s=>ids.has(s.id));
   const total=selected.reduce((sum,s)=>sum+salePrice(s),0);
   data.snakes=data.snakes.filter(s=>!ids.has(s.id));
@@ -113,7 +118,7 @@ function sellIds(ids){
   refresh();msg(`${selected.length}匹を売却！ +${total}コイン`);
 }
 function toggleSale(id,checked){
-  if(checked)saleSelection.add(id);else saleSelection.delete(id);
+  if(checked && !data.snakes.find(s=>s.id===id)?.locked)saleSelection.add(id);else saleSelection.delete(id);
   renderCollection();
 }
 function selectSaleAll(){
@@ -124,7 +129,7 @@ function selectSaleAll(){
     const one=data.snakes.find(s=>s.sex===sex);
     if(one)keep.add(one.id);
   }
-  for(const s of data.snakes)if(!keep.has(s.id))saleSelection.add(s.id);
+  for(const s of data.snakes)if(!keep.has(s.id)&&!s.locked)saleSelection.add(s.id);
   renderCollection();
 }
 function clearSaleSelection(){saleSelection.clear();renderCollection();}
@@ -138,10 +143,11 @@ function sellSelected(){
 }
 function renderCollection(){
   const e=document.getElementById('collection-grid');e.innerHTML='';
-  saleSelection=new Set([...saleSelection].filter(id=>data.snakes.some(s=>s.id===id)));
+  saleSelection=new Set([...saleSelection].filter(id=>data.snakes.some(s=>s.id===id&&!s.locked)));
   data.snakes.forEach(s=>{
     const c=document.createElement('div');c.className='animal';
-    c.innerHTML=displaySnake(s)+`<div class="muted">${Object.entries(s.g).map(([k,v])=>k+' '+v+'/2').join('、')||'変異なし'}</div><div class="sale-line"><label class="sale-check"><input type="checkbox" data-select-id="${s.id}" ${saleSelection.has(s.id)?'checked':''}> まとめ売りに選択</label><span>売却価格：💰 ${salePrice(s)}コイン</span><button class="sell-button" ${canSell(s)?'':'disabled title="交配用にオス・メス各1匹を残します"'} data-sell-id="${s.id}">${canSell(s)?'この個体を売る':'最後の'+(s.sex==='♂'?'オス':'メス')+'は売れません'}</button></div>`;
+    c.innerHTML=displaySnake(s)+`<div class="muted">${Object.entries(s.g).map(([k,v])=>k+' '+v+'/2').join('、')||'変異なし'}</div><div class="sale-line"><button data-lock-id="${s.id}">${s.locked?'🔒 ロックをはずす':'🔓 ロックする'}</button><label class="sale-check"><input type="checkbox" data-select-id="${s.id}" ${s.locked?'disabled':''} ${saleSelection.has(s.id)?'checked':''}> まとめ売りに選択</label><span>売却価格：💰 ${salePrice(s)}コイン</span><button class="sell-button" ${canSell(s)?'':'disabled title="交配用にオス・メス各1匹を残します"'} data-sell-id="${s.id}">${s.locked?'🔒 売却できません':canSell(s)?'この個体を売る':'最後の'+(s.sex==='♂'?'オス':'メス')+'は売れません'}</button></div>`;
+    c.querySelector('[data-lock-id]').addEventListener('click',()=>toggleSnakeLock(s.id));
     c.querySelector('[data-sell-id]').addEventListener('click',()=>sellSnake(s.id));
     c.querySelector('[data-select-id]').addEventListener('change',ev=>toggleSale(s.id,ev.target.checked));
     e.append(c);
@@ -161,8 +167,8 @@ const practiceWords=['パステル','バナナ','アルビノ','パイド','モ�
 let practiceWord=null,practiceOpen=false,practiceCompleted=0,practiceHistory=[];
 if(!Number.isInteger(data.practiceProgress)||data.practiceProgress<0||data.practiceProgress>2)data.practiceProgress=0;
 function nextPractice(){const candidates=practiceWords.filter(w=>!practiceHistory.slice(-4).includes(w));practiceWord=candidates[Math.floor(Math.random()*candidates.length)]||practiceWords[Math.floor(Math.random()*practiceWords.length)];practiceOpen=true;renderPractice();setTimeout(initPad,0)}
-function renderPractice(){const count=document.getElementById('practice-count');if(!count)return;count.textContent='1問正解で200コイン（何度でも挑戦できる）';const el=document.getElementById('practice-area');if(!practiceOpen){el.innerHTML='<button class="primary" onclick="nextPractice()">🎲 チャレンジ開始</button>';return;}el.innerHTML=`<div class="writing"><p>この言葉をカタカナで書こう！</p><h2 style="text-align:center;font-size:28px">${practiceWord}</h2><p class="writing-note">文字数に合わせて書く場所が広がります。長い言葉は左右に動かして書こう。</p><div class="writing-scroll" id="pad-scroll"><canvas id="pad"></canvas></div><div class="flex" style="margin-top:10px"><button onclick="erasePad()">書き直す</button><button class="primary" onclick="completePractice()">先生と確認して1問クリア</button><button onclick="nextPractice()">別の問題へ</button></div><p class="muted">自動採点ではありません。先生が確認してからクリアしてください。</p></div>`;setTimeout(initPad,0)}
-function completePractice(){if(strokes<1)return msg('白い枠にカタカナを書いてね');if(!practiceOpen)return;data.practiceProgress=0;practiceCompleted++;practiceHistory.push(practiceWord);practiceOpen=false;data.money+=200;refresh();msg('正解！ +200コイン')}
+function renderPractice(){const count=document.getElementById('practice-count');if(!count)return;count.textContent='1問クリアで200コイン＋大会チケット1まい（何度でも挑戦できる）';const el=document.getElementById('practice-area');if(!practiceOpen){el.innerHTML='<button class="primary" onclick="nextPractice()">🎲 チャレンジ開始</button>';return;}el.innerHTML=`<div class="writing"><p>この言葉をカタカナで書こう！</p><h2 style="text-align:center;font-size:28px">${practiceWord}</h2><p class="writing-note">文字数に合わせて書く場所が広がります。長い言葉は左右に動かして書こう。</p><div class="writing-scroll" id="pad-scroll"><canvas id="pad"></canvas></div><div class="flex" style="margin-top:10px"><button onclick="erasePad()">書き直す</button><button class="primary" onclick="completePractice()">先生と確認して1問クリア</button><button onclick="nextPractice()">別の問題へ</button></div><p class="muted">自動採点ではありません。先生が確認してからクリアしてください。</p></div>`;setTimeout(initPad,0)}
+function completePractice(){if(strokes<1)return msg('白い枠にカタカナを書いてね');if(!practiceOpen)return;data.practiceProgress=0;practiceCompleted++;practiceHistory.push(practiceWord);practiceOpen=false;data.money+=200;data.entryTickets=(data.entryTickets||0)+1;refresh();msg('クリア！ +200コイン、🎟️ チケット +1')}
 let padCtx,strokes=0;
 function initPad(){
  const c=document.getElementById('pad');if(!c)return;

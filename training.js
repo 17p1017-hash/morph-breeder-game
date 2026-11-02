@@ -60,16 +60,40 @@ function openEntry(){const s=data.snakes.find(x=>x.id===trainingSelected);if(!s)
 function initEntryPad(){const c=document.getElementById('entry-pad');if(!c)return;const s=data.snakes.find(x=>x.id===trainingSelected);const word=nameOf(s.g);const width=Math.max(c.parentElement.clientWidth,word.length*72+30);c.style.width=width+'px';c.style.height='200px';const dpr=Math.min(devicePixelRatio||1,2);c.width=width*dpr;c.height=200*dpr;const ctx=c.getContext('2d');ctx.scale(dpr,dpr);ctx.strokeStyle='#152026';ctx.lineWidth=4;ctx.lineCap='round';ctx.lineJoin='round';entryStrokes=0;let down=false;const pos=e=>{const r=c.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top]};c.onpointerdown=e=>{down=true;entryStrokes++;c.setPointerCapture(e.pointerId);const [x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+.1,y+.1);ctx.stroke()};c.onpointermove=e=>{if(!down)return;const [x,y]=pos(e);ctx.lineTo(x,y);ctx.stroke()};c.onpointerup=()=>down=false;c.onpointercancel=()=>down=false}
 function confirmEntry(){if(entryStrokes<1)return msg('モルフ名をカタカナで書いてください');const s=data.snakes.find(x=>x.id===trainingSelected);if(!s)return;const t=trainingOf(s);if(t.entry)return;t.entry=true;t.unlock=Math.floor(Math.random()*3);entryWriting=false;save();renderTraining();msg(TRAIN_NAMES[t.unlock]+'の上限が100になりました！')}
 
-function completeTraining(){let s=snakeNow();if(!s)return;let t=trainingOf(s);if(t.completed)return;if(t.turn<TRAIN_TURNS)return msg('10ターン育成してください');let f=factorOf(s).slice();t.stats.forEach((v,i)=>{let chance=v===100?.4:v>=95?.3:v>=90?.2:0;if(Math.random()<chance)f[i]=3;else if(v>=60&&Math.random()<.08)f[i]=3;else if(v>=35)f[i]=Math.max(f[i],2)});s.factors=f;t.completed=true;t.log.unshift('育成完了！ 因子が確定しました');save();renderTraining();msg('育成完了！ 因子が確定しました')}
-function enterContest(kind){let s=snakeNow();if(!s)return;let t=trainingOf(s);if(!t.completed)return msg('先に育成を完了してください');if(t.contests.includes(kind))return msg('出場済みです');let costs=[100,250,500],targets=[135,185,240];if(data.money<costs[kind])return msg('参加費が足りません');data.money-=costs[kind];let score=t.stats.reduce((a,b)=>a+b,0)+Math.floor(Math.random()*21)-10+Math.round((t.health-70)/5);let win=score>=targets[kind];t.contests.push(kind);if(win){if(!Array.isArray(data.hall))data.hall=[];data.hall.push({id:s.id,name:nameOf(s.g),kind,score})}contestScene={kind,score,win,step:0,stats:t.stats.slice()};save();refresh();renderTraining()}
+function completeTraining(){
+ let s=snakeNow();if(!s)return;let t=trainingOf(s);if(t.completed)return;
+ if(t.turn<TRAIN_TURNS)return msg('10ターン育成してください');
+ const f=factorOf(s).slice();
+ // ★1→★2は22以上で確定、★2→★3は30以上で毎回20%抽選。1回の育成で2段階飛ばない。
+ t.stats.forEach((v,i)=>{
+  if(f[i]<2 && v>=22)f[i]=2;
+  else if(f[i]===2 && v>=30 && Math.random()<.20)f[i]=3;
+ });
+ s.factors=f;t.completed=true;t.log.unshift('育成完了！ 因子が確定しました');save();renderTraining();msg('育成完了！ 因子が確定しました')
+}
+function enterContest(kind){
+ let s=snakeNow();if(!s)return;let t=trainingOf(s);
+ if(!t.completed)return msg('先に育成を完了してください');
+ if(t.contests.includes(kind))return msg('出場済みです');
+ if((data.entryTickets||0)<1)return msg('🎟️ チケットがありません。カタカナチャレンジでゲットしよう！');
+ const costs=[100,250,500],targets=[75,105,140];
+ if(data.money<costs[kind])return msg('参加費が足りません');
+ data.money-=costs[kind];data.entryTickets--;
+ // 因子の星数が大会にも影響。★1でも各能力+2点、★2:+4、★3:+7。
+ const factorBonus=factorOf(s).reduce((sum,star)=>sum+({0:0,1:2,2:4,3:7}[star]||0),0);
+ const score=t.stats.reduce((a,b)=>a+b,0)+factorBonus+Math.floor(Math.random()*11)-5+Math.round((t.health-70)/10);
+ const win=score>=targets[kind];t.contests.push(kind);
+ if(win){if(!Array.isArray(data.hall))data.hall=[];data.hall.push({id:s.id,name:nameOf(s.g),kind,score})}
+ contestScene={kind,score,win,step:0,stats:t.stats.slice(),factorBonus};save();refresh();renderTraining()
+}
 function nextContestScene(){if(!contestScene)return;contestScene.step++;if(contestScene.step>4)contestScene=null;renderTraining()}
-function renderTraining(){let area=document.getElementById('training-area');if(!area)return;let s=snakeNow();if(!s){area.innerHTML='<h3>そだてる ヘビを えらぶ</h3><div class="training-list">'+data.snakes.map(x=>`<button onclick="chooseTraining(${x.id})">#${x.id} ${nameOf(x.g)} ${x.sex} ${trainingOf(x).completed?'（育成済）':''}</button>`).join('')+'</div>';return}
+function renderTraining(){let area=document.getElementById('training-area');if(!area)return;let s=snakeNow();if(!s){area.innerHTML='<h3>そだてる ヘビを えらぶ</h3><div class="training-list">'+data.snakes.map(x=>`<button onclick="chooseTraining(${x.id})">#${x.id} ${nameOf(x.g)} ${x.sex} ${x.locked?'🔒 ':''}${trainingOf(x).completed?'（育成済）':''}${(x.training?.contests||[]).length?' 🏆出場ずみ':''}</button>`).join('')+'</div>';return}
  let t=trainingOf(s),f=factorOf(s);let html=`<button onclick="chooseTraining(null)">← ヘビの いちらん</button><div class="train-hero">${photoMarkup(s.g,'育成中のボールパイソン')}<div><h3>#${s.id} ${nameOf(s.g)} ${s.sex}</h3><p>育成 ${Math.min(t.turn,TRAIN_TURNS)}/${TRAIN_TURNS}ターン</p><p>因子 ${f.map(x=>'★'.repeat(x)).join(' / ')}</p><p class="muted">因子効果：初期値 +3 / +6 / +10、成長追加抽選 10% / 25% / 50%</p></div></div>`;
  TRAIN_NAMES.forEach((n,i)=>{let cap=t.unlock===i?100:89;html+=`<div class="train-stat"><b>${n} ${t.stats[i]}/${cap}</b><small>　因子 ${'★'.repeat(f[i])}</small><div class="train-bar"><span style="width:${t.stats[i]}%"></span></div></div>`});html+=`<div class="train-stat"><b>💚 健康 ${t.health}/100</b><div class="train-bar health"><span style="width:${t.health}%"></span></div></div>`;
- if(contestScene){let c=contestScene,steps=['出場個体紹介','第1審査：発色','第2審査：模様','最終審査：体格','結果発表'];html+=`<div class="contest-stage"><p>🏆 ${['ビギナー杯','モルフ杯','世界選手権'][c.kind]}</p><h2>${steps[c.step]}</h2>${c.step===0?`<p>${nameOf(s.g)}が審査会場に登場！</p>`:c.step<4?`<p>${TRAIN_NAMES[c.step-1]}：${c.stats[c.step-1]}点</p><p>審査員が評価しています……</p>`:`<h2>${c.win?'🥇 入賞おめでとう！':'惜しくも入賞ならず'}</h2><p>総合 ${c.score}点</p>`}<button class="primary" onclick="nextContestScene()">${c.step===4?'結果を閉じる':'次の審査へ ▶'}</button></div>`;area.innerHTML=html;return}
+ if(contestScene){let c=contestScene,steps=['出場個体紹介','第1審査：発色','第2審査：模様','最終審査：体格','結果発表'];html+=`<div class="contest-stage"><p>🏆 ${['ビギナー杯','モルフ杯','世界選手権'][c.kind]}</p><h2>${steps[c.step]}</h2>${c.step===0?`<p>${nameOf(s.g)}が審査会場に登場！</p>`:c.step<4?`<p>${TRAIN_NAMES[c.step-1]}：${c.stats[c.step-1]}点</p><p>審査員が評価しています……</p>`:`<h2>${c.win?'🥇 入賞おめでとう！':'惜しくも入賞ならず'}</h2><p>総合 ${c.score}点（因子ボーナス +${c.factorBonus||0}）</p>`}<button class="primary" onclick="nextContestScene()">${c.step===4?'結果を閉じる':'次の審査へ ▶'}</button></div>`;area.innerHTML=html;applyExternalPhotos(area);return}
  if(!t.completed){if(t.turn<TRAIN_TURNS){let ev=SCENES[t.turn];html+=`<div class="train-choice"><p>第${t.turn+1}ターン / ${TRAIN_TURNS}</p><h3>${ev.title}</h3><p>${ev.story}</p><div class="training-list">`+ev.choices.map((c,i)=>`<button onclick="chooseCare(${i})">${c[0]}（${c[1]}C）</button>`).join('')+'</div><p class="muted">1つ えらぶと つぎの ターンへ すすみます。</p></div>'}
  if(!t.entry){if(!entryWriting)html+='<div class="panel"><h3>🏆 特別コンテスト</h3><p>モルフ名をカタカナで書いてエントリー。ランダムで1能力の上限が100に解放されます。</p><button onclick="openEntry()">エントリーする</button></div>';else html+=`<div class="panel"><h3>エントリーシート</h3><p>「${nameOf(s.g)}」をカタカナで書こう。先生と確認しよう。</p><div class="writing-scroll"><canvas id="entry-pad"></canvas></div><div class="training-list"><button onclick="initEntryPad()">書き直す</button><button onclick="confirmEntry()">先生と確認してエントリー</button><button onclick="entryWriting=false;renderTraining()">戻る</button></div></div>`}else html+=`<p>🔓 ${TRAIN_NAMES[t.unlock]}の上限解放済み</p>`;
  html+=`<p><button ${t.turn<TRAIN_TURNS?'disabled':''} onclick="completeTraining()">育成終了・因子を確定</button></p>`;
  }else html+='<h3>🏆 コンテストに挑戦</h3><div class="training-list">'+['ビギナー杯','モルフ杯','世界選手権'].map((n,i)=>`<button ${t.contests.includes(i)?'disabled':''} onclick="enterContest(${i})">${n}（${[100,250,500][i]}C）</button>`).join('')+'</div>';
- html+='<h3>📖 そだてた きろく</h3><div class="train-diary">'+(t.log.length?t.log.map(x=>`<p>${x}</p>`).join(''):'<p>まだ記録はありません。</p>')+'</div><h3>🏅 展示記録</h3>'+((data.hall||[]).length?'<ul>'+(data.hall||[]).map(x=>`<li>#${x.id} ${x.name} — ${['ビギナー杯','モルフ杯','世界選手権'][x.kind]} ${x.score}点</li>`).join('')+'</ul>':'<p>まだ入賞記録はありません。</p>');area.innerHTML=html;if(entryWriting)setTimeout(initEntryPad,0)}
+ html+='<h3>📖 そだてた きろく</h3><div class="train-diary">'+(t.log.length?t.log.map(x=>`<p>${x}</p>`).join(''):'<p>まだ記録はありません。</p>')+'</div><h3>🏅 展示記録</h3>'+((data.hall||[]).length?'<ul>'+(data.hall||[]).map(x=>`<li>#${x.id} ${x.name} — ${['ビギナー杯','モルフ杯','世界選手権'][x.kind]} ${x.score}点</li>`).join('')+'</ul>':'<p>まだ入賞記録はありません。</p>');area.innerHTML=html;applyExternalPhotos(area);if(entryWriting)setTimeout(initEntryPad,0)}
 const originalRefresh=refresh;refresh=function(){originalRefresh();if(!document.getElementById('training').hidden)renderTraining()};
