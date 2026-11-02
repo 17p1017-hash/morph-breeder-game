@@ -6,3 +6,6 @@
 .combo-empty{height:104px;display:grid;place-items:center;background:#38484a;color:#f3f6ec;font-weight:700}.animal a{color:#bde7ff;font-size:12px;overflow-wrap:anywhere}
 
 .bulk-sale{display:flex;flex-direction:column;gap:10px;margin:12px 0;padding:12px;border:1px solid #547565;border-radius:12px;background:#263b38}.bulk-sale .flex button{font-size:13px}.bulk-sale small{color:#c9d5d1}.sale-check{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px}.sale-check input{width:20px;height:20px;accent-color:#9adea7}
+
+/* 育成・大会 */
+.training-list{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.training-list button{flex:1 1 135px}.train-stat{margin:12px 0}.train-stat small{color:var(--muted)}.train-bar{height:11px;background:#354b4a;border-radius:10px;overflow:hidden;margin-top:5px}.train-bar span{display:block;height:100%;background:#9adea7;border-radius:10px}#entry-pad{background:white;touch-action:none}
