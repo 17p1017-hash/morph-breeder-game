@@ -44,7 +44,27 @@ function placeholderPhoto(label='画像未登録'){
 // 登録済みの複合モルフ画像を遺伝子名・コピー数で厳密照合。
 function visibleGenes(g){return Object.fromEntries(Object.entries(g).filter(([k,v])=>GENES[k]==='rec'?v===2:v>=1));}
 function sameGenotype(a,b){const ka=Object.keys(a).sort(),kb=Object.keys(b).sort();return ka.length===kb.length&&ka.every((k,i)=>k===kb[i]&&a[k]===b[k]);}
+// 利用者提供の実写写真。外部検索より優先して表示する。
+const USER_MORPH_PHOTOS={
+ 'シナモン':'cinnamon.jpeg','ブラックパステル':'black_pastel.jpeg',
+ 'ピンストライプ':'pinstripe.jpeg','レッサー':'lesser.jpeg',
+ 'スポットノーズ':'spotnose.jpeg','バンブー':'bamboo.jpeg',
+ 'ラベンダーアルビノ':'lavender_albino.jpeg',
+ 'ジェネティックストライプ':'genetic_stripe.jpeg',
+ 'サンセット':'sunset.jpeg','アシッド':'acid.jpeg'
+};
+function userMorphPhoto(g){
+ const v=visibleGenes(g),keys=Object.keys(v);
+ if(keys.length===2&&v['アルビノ']===2&&v['アザンティック']===2)
+  return {src:'assets/user_morphs/snow.webp',reference:false,exact:true,label:'スノーの登録写真'};
+ if(keys.length!==1)return null;
+ const k=keys[0];
+ if(v[k] !== (GENES[k]==='rec'?2:1))return null;
+ const filename=USER_MORPH_PHOTOS[k];
+ return filename?{src:'assets/user_morphs/'+filename,reference:false,exact:true,label:k+'の登録写真'}:null;
+}
 function photoOf(g){
+ const supplied=userMorphPhoto(g);if(supplied)return supplied;
  const visible=visibleGenes(g); const genes=Object.keys(visible);
  const cached=window.EXTERNAL_PHOTO_CACHE?.[photoGeneKey(g)];
  if(cached && cached.url)return {src:cached.url,reference:false,exact:true,label:'実在する複合モルフの写真（外部参照）',credit:cached.credit||'',detail:cached.page||'',fallback:cached.fallback||''};

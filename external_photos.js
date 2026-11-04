@@ -99,6 +99,8 @@ let apiActive=0;
 const apiQueue=[];
 function photoGeneKey(g){return JSON.stringify(Object.entries(visibleGenes(g)).sort(([a],[b])=>a.localeCompare(b,'ja')))}
 function photoNames(g){return Object.entries(visibleGenes(g)).map(([k,v])=>({k,v,eng:MORPH_ENGLISH[k]}));}
+function isSnow(g){const v=visibleGenes(g);return Object.keys(v).length===2&&v['アルビノ']===2&&v['アザンティック']===2;}
+
 const NEW_SINGLE_MORPHS=new Set(['シナモン','ブラックパステル','ピンストライプ','レッサー','スポットノーズ','バンブー','ラベンダーアルビノ','ジェネティックストライプ','サンセット','アシッド']);
 function remoteEligible(g){
  const a=photoNames(g);
@@ -117,11 +119,12 @@ function matchCommonsTitle(title,names){
  const clean=(title||'').replace(/^File:/i,'').replace(/[_\-.()]/g,' ').toLowerCase();
  if(!clean.includes('ball python')&&!clean.includes('python regius'))return false;
  const normalized=clean.replace(/\s+/g,' ');
+ if(isSnow(Object.fromEntries(names.map(n=>[n.k,n.v]))) && /(^|[^a-z])snow([^a-z]|$)/.test(normalized))return true;
  return names.every(n=>n.eng.toLowerCase().split(/\s+/).every(w=>new RegExp('(^|[^a-z])'+w+'([^a-z]|$)','i').test(normalized)));
 }
 // 複数の取得先を同時に確認して、表示するのは最初に読み込めた実写1枚だけ。
 async function lookupCommons(g){
- const names=photoNames(g), term=names.map(x=>x.eng).join(' ')+' ball python';
+ const names=photoNames(g), term=(isSnow(g)?'snow albino axanthic':names.map(x=>x.eng).join(' '))+' ball python';
  const params=new URLSearchParams({action:'query',generator:'search',gsrsearch:term,gsrnamespace:'6',gsrlimit:'20',prop:'imageinfo',iiprop:'url|extmetadata',iiurlwidth:'800',format:'json',origin:'*'});
  const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),8000);
  let resp;
@@ -157,7 +160,7 @@ function photoTitleScore(item,requested){
  if(!requested.every(g=>padded.includes(' '+g+' ')))return -1;
  let score=100;
  for(const extra of EXTRA_MORPH_TERMS){
-  if(requested.includes(extra))continue;
+  if(requested.some(r=>r===extra||r.split(' ').includes(extra)))continue;
   if(padded.includes(' '+extra+' '))score-=50;
  }
  return score;
@@ -176,7 +179,7 @@ function photoStatus(g,message){
 }
 async function lookupSerpApi(g){
  const requested=photoNames(g).map(x=>x.eng.toLowerCase());
- const params=new URLSearchParams({genes:requested.join(',')});
+ const params=new URLSearchParams({genes:requested.join(','),query:isSnow(g)?'snow albino axanthic ball python':requested.join(' ')+' ball python'});
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),PHOTO_API_TIMEOUT_MS);
  try{
@@ -189,7 +192,7 @@ async function lookupSerpApi(g){
    url:x.url,page:x.page||'',credit:x.source||'',
    license:'利用条件は出典ページで要確認',
    score:photoTitleScore(x,requested)
-  })).filter(x=>x.score>=100 && /^https:\/\//.test(x.url))
+  })).filter(x=>x.score>=0 && /^https:\/\//.test(x.url))
     .sort((a,b)=>b.score-a.score);
   if(!candidates.length)photoStatus(g,'一致する遺伝子名の写真候補なし');
   else photoStatus(g,'画像候補'+candidates.length+'件を確認中');
@@ -223,6 +226,7 @@ function applyExternalPhotos(root=document){
  const images=[...root.querySelectorAll('img[data-morph-genotype]')];
  for(const img of images){
   let g;try{g=JSON.parse(decodeURIComponent(img.dataset.morphGenotype))}catch(e){continue}
+  if(userMorphPhoto(g))continue;
   if(!remoteEligible(g))continue;
   // combo_photos.js の完全一致画像が表示されている場合は、画像を置き換えない。
   if(!img.getAttribute('src')?.startsWith('data:image/svg+xml') && !img.getAttribute('src')?.includes('morph_')){
