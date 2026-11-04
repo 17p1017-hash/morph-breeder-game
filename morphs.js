@@ -68,7 +68,8 @@ const USER_MORPH_PHOTOS={
  'スポットノーズ':'spotnose.jpeg','バンブー':'bamboo.jpeg',
  'ラベンダーアルビノ':'lavender_albino.jpeg',
  'ジェネティックストライプ':'genetic_stripe.jpeg',
- 'サンセット':'sunset.jpeg','アシッド':'acid.jpeg'
+ 'サンセット':'sunset.jpeg','アシッド':'acid.jpeg',
+ 'グラベル':'gravel.jpeg','アスファルト':'asphalt.jpeg'
 };
 // ユーザー提供の有名コンボ写真。NAMED_COMBOS と同じ遺伝子構成で厳密照合。
 const USER_NAMED_COMBO_PHOTOS={
