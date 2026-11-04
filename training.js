@@ -14,7 +14,7 @@ const SCENES=[
  {title:'✨ たいかいの じゅんび',story:'もうすぐ たいかい。どこを みせたいですか？',choices:[['だっぴの あとの 色を きれいに みせる',30,[2,0,0],5],['もようが 見やすい はいけいに する',30,[0,2,0],5],['体重と からだの ようすを しらべる',20,[0,0,2],6],['今日は しずかに 休ませる',0,[0,0,0],10]]},
  {title:'🏆 さいごの 1日',story:'いよいよ さいごの ターン。どんな じゅんびを しますか？',choices:[['色が 見やすい あかりを えらぶ',35,[2,0,0],4],['もようが 見やすい ばしょを えらぶ',35,[0,2,0],4],['からだの きろくを まとめる',20,[0,0,2],5],['しずかな ばしょで 休ませる',0,[0,0,0],10]]}
 ];
-function factorOf(s){return Array.isArray(s.factors)&&s.factors.length===3?s.factors:[1,1,1]}
+function factorOf(s){return Array.isArray(s.factors)&&s.factors.length===3?s.factors:[0,0,0]}
 function inheritFactors(a,b){return TRAIN_NAMES.map((_,i)=>{let x=factorOf(a)[i],y=factorOf(b)[i];if(x===y)return x;return Math.min(x,y)+Math.floor(Math.random()*(Math.abs(x-y)+1))})}
 const FACTOR_INITIAL_BONUS={0:0,1:3,2:6,3:10};
 const FACTOR_GROWTH_CHANCE={0:0,1:.10,2:.25,3:.50};
@@ -63,13 +63,7 @@ function confirmEntry(){if(entryStrokes<1)return msg('モルフ名をカタカ�
 function completeTraining(){
  let s=snakeNow();if(!s)return;let t=trainingOf(s);if(t.completed)return;
  if(t.turn<TRAIN_TURNS)return msg('10ターン育成してください');
- const f=factorOf(s).slice();
- // ★1→★2は22以上で確定、★2→★3は30以上で毎回20%抽選。1回の育成で2段階飛ばない。
- t.stats.forEach((v,i)=>{
-  if(f[i]<2 && v>=22)f[i]=2;
-  else if(f[i]===2 && v>=30 && Math.random()<.20)f[i]=3;
- });
- s.factors=f;t.completed=true;t.log.unshift('育成完了！ 因子が確定しました');save();renderTraining();msg('育成完了！ 因子が確定しました')
+ t.completed=true;t.log.unshift('育成完了！ コンテストに出場すると因子を獲得できます');save();renderTraining();msg('育成完了！ コンテストに出場して因子を獲得しよう')
 }
 function enterContest(kind){
  let s=snakeNow();if(!s)return;let t=trainingOf(s);
@@ -83,17 +77,26 @@ function enterContest(kind){
  const factorBonus=factorOf(s).reduce((sum,star)=>sum+({0:0,1:2,2:4,3:7}[star]||0),0);
  const score=t.stats.reduce((a,b)=>a+b,0)+factorBonus+Math.floor(Math.random()*11)-5+Math.round((t.health-70)/10);
  const win=score>=targets[kind];t.contests.push(kind);
+ // コンテストに出場した個体だけが因子を獲得。入賞の成否は問わない。
+ const earned=factorOf(s).slice();
+ const candidates=t.stats.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v);
+ const chosen=candidates[0].i;
+ if(earned.every(v=>v===0))earned[chosen]=1;
+ else if(earned[chosen]<2 && t.stats[chosen]>=22)earned[chosen]++;
+ else if(earned[chosen]===2 && t.stats[chosen]>=30 && Math.random()<.20)earned[chosen]=3;
+ s.factors=earned;s.factorLineage=true;
+ t.log.unshift('🏆 コンテスト出場：因子を獲得しました');
  if(win){if(!Array.isArray(data.hall))data.hall=[];data.hall.push({id:s.id,name:nameOf(s.g),kind,score})}
  contestScene={kind,score,win,step:0,stats:t.stats.slice(),factorBonus};save();refresh();renderTraining()
 }
 function nextContestScene(){if(!contestScene)return;contestScene.step++;if(contestScene.step>4)contestScene=null;renderTraining()}
 function renderTraining(){let area=document.getElementById('training-area');if(!area)return;let s=snakeNow();if(!s){area.innerHTML='<h3>そだてる ヘビを えらぶ</h3><div class="training-list">'+data.snakes.map(x=>`<button onclick="chooseTraining(${x.id})">#${x.id} ${nameOf(x.g)} ${x.sex} ${x.locked?'🔒 ':''}${trainingOf(x).completed?'（育成済）':''}${(x.training?.contests||[]).length?' 🏆出場ずみ':''}</button>`).join('')+'</div>';return}
- let t=trainingOf(s),f=factorOf(s);let html=`<button onclick="chooseTraining(null)">← ヘビの いちらん</button><div class="train-hero">${photoMarkup(s.g,'育成中のボールパイソン')}<div><h3>#${s.id} ${nameOf(s.g)} ${s.sex}</h3><p>育成 ${Math.min(t.turn,TRAIN_TURNS)}/${TRAIN_TURNS}ターン</p><p>因子 ${f.map(x=>'★'.repeat(x)).join(' / ')}</p><p class="muted">因子効果：初期値 +3 / +6 / +10、成長追加抽選 10% / 25% / 50%</p></div></div>`;
- TRAIN_NAMES.forEach((n,i)=>{let cap=t.unlock===i?100:89;html+=`<div class="train-stat"><b>${n} ${t.stats[i]}/${cap}</b><small>　因子 ${'★'.repeat(f[i])}</small><div class="train-bar"><span style="width:${t.stats[i]}%"></span></div></div>`});html+=`<div class="train-stat"><b>💚 健康 ${t.health}/100</b><div class="train-bar health"><span style="width:${t.health}%"></span></div></div>`;
+ let t=trainingOf(s),f=factorOf(s);let html=`<button onclick="chooseTraining(null)">← ヘビの いちらん</button><div class="train-hero">${photoMarkup(s.g,'育成中のボールパイソン')}<div><h3>#${s.id} ${nameOf(s.g)} ${s.sex}</h3><p>育成 ${Math.min(t.turn,TRAIN_TURNS)}/${TRAIN_TURNS}ターン</p><p>因子 ${f.map(x=>('★'.repeat(x)||'なし')).join(' / ')}</p><p class="muted">因子効果：初期値 +3 / +6 / +10、成長追加抽選 10% / 25% / 50%</p></div></div>`;
+ TRAIN_NAMES.forEach((n,i)=>{let cap=t.unlock===i?100:89;html+=`<div class="train-stat"><b>${n} ${t.stats[i]}/${cap}</b><small>　因子 ${('★'.repeat(f[i])||'なし')}</small><div class="train-bar"><span style="width:${t.stats[i]}%"></span></div></div>`});html+=`<div class="train-stat"><b>💚 健康 ${t.health}/100</b><div class="train-bar health"><span style="width:${t.health}%"></span></div></div>`;
  if(contestScene){let c=contestScene,steps=['出場個体紹介','第1審査：発色','第2審査：模様','最終審査：体格','結果発表'];html+=`<div class="contest-stage"><p>🏆 ${['ビギナー杯','モルフ杯','世界選手権'][c.kind]}</p><h2>${steps[c.step]}</h2>${c.step===0?`<p>${nameOf(s.g)}が審査会場に登場！</p>`:c.step<4?`<p>${TRAIN_NAMES[c.step-1]}：${c.stats[c.step-1]}点</p><p>審査員が評価しています……</p>`:`<h2>${c.win?'🥇 入賞おめでとう！':'惜しくも入賞ならず'}</h2><p>総合 ${c.score}点（因子ボーナス +${c.factorBonus||0}）</p>`}<button class="primary" onclick="nextContestScene()">${c.step===4?'結果を閉じる':'次の審査へ ▶'}</button></div>`;area.innerHTML=html;applyExternalPhotos(area);return}
  if(!t.completed){if(t.turn<TRAIN_TURNS){let ev=SCENES[t.turn];html+=`<div class="train-choice"><p>第${t.turn+1}ターン / ${TRAIN_TURNS}</p><h3>${ev.title}</h3><p>${ev.story}</p><div class="training-list">`+ev.choices.map((c,i)=>`<button onclick="chooseCare(${i})">${c[0]}（${c[1]}C）</button>`).join('')+'</div><p class="muted">1つ えらぶと つぎの ターンへ すすみます。</p></div>'}
  if(!t.entry){if(!entryWriting)html+='<div class="panel"><h3>🏆 特別コンテスト</h3><p>モルフ名をカタカナで書いてエントリー。ランダムで1能力の上限が100に解放されます。</p><button onclick="openEntry()">エントリーする</button></div>';else html+=`<div class="panel"><h3>エントリーシート</h3><p>「${nameOf(s.g)}」をカタカナで書こう。先生と確認しよう。</p><div class="writing-scroll"><canvas id="entry-pad"></canvas></div><div class="training-list"><button onclick="initEntryPad()">書き直す</button><button onclick="confirmEntry()">先生と確認してエントリー</button><button onclick="entryWriting=false;renderTraining()">戻る</button></div></div>`}else html+=`<p>🔓 ${TRAIN_NAMES[t.unlock]}の上限解放済み</p>`;
- html+=`<p><button ${t.turn<TRAIN_TURNS?'disabled':''} onclick="completeTraining()">育成終了・因子を確定</button></p>`;
+ html+=`<p><button ${t.turn<TRAIN_TURNS?'disabled':''} onclick="completeTraining()">育成終了</button></p>`;
  }else html+='<h3>🏆 コンテストに挑戦</h3><div class="training-list">'+['ビギナー杯','モルフ杯','世界選手権'].map((n,i)=>`<button ${t.contests.includes(i)?'disabled':''} onclick="enterContest(${i})">${n}（${[100,250,500][i]}C）</button>`).join('')+'</div>';
  html+='<h3>📖 そだてた きろく</h3><div class="train-diary">'+(t.log.length?t.log.map(x=>`<p>${x}</p>`).join(''):'<p>まだ記録はありません。</p>')+'</div><h3>🏅 展示記録</h3>'+((data.hall||[]).length?'<ul>'+(data.hall||[]).map(x=>`<li>#${x.id} ${x.name} — ${['ビギナー杯','モルフ杯','世界選手権'][x.kind]} ${x.score}点</li>`).join('')+'</ul>':'<p>まだ入賞記録はありません。</p>');area.innerHTML=html;applyExternalPhotos(area);if(entryWriting)setTimeout(initEntryPad,0)}
 const originalRefresh=refresh;refresh=function(){originalRefresh();if(!document.getElementById('training').hidden)renderTraining()};

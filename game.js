@@ -2,6 +2,13 @@
 let data; try{data=JSON.parse(localStorage.getItem('morph-breeder-v1'))}catch(e){};
 if(!data||!Array.isArray(data.snakes)){data={money:280,id:3,snakes:[{id:1,g:{'パステル':1},sex:'♂'},{id:2,g:{'エンチ':1},sex:'♀'}],done:[],hatched:0,discovered:[]}}
 if(!Number.isFinite(data.entryTickets))data.entryTickets=0;
+// v14: 因子の獲得経路を大会出場と出場個体の子に限定。旧セーブも補正。
+for(const snake of data.snakes){
+ const entered=(snake.training?.contests||[]).length>0;
+ if(!entered && !snake.factorLineage)snake.factors=[0,0,0];
+ else if(entered && !Array.isArray(snake.factors))snake.factors=[1,1,1];
+}
+
 let selection=[],pending=null,missionPending=null;
 let saleSelection=new Set();
 // アップデート前に育てた個体も「発見済み」に引き継ぐ。
@@ -36,7 +43,8 @@ function genetics(g1,g2){
  }
  return out;
 }
-function factorText(s){const f=typeof factorOf==='function'?factorOf(s):(s.factors||[1,1,1]);return ['発色','模様','体格'].map((n,i)=>n+' '+('★'.repeat(f[i]||0)||'なし')).join(' / ')}
+function hasContestLineage(s){return !!s.factorLineage||(s.training?.contests||[]).length>0}
+function factorText(s){const f=typeof factorOf==='function'?factorOf(s):(s.factors||[0,0,0]);return ['発色','模様','体格'].map((n,i)=>n+' '+('★'.repeat(f[i]||0)||'なし')).join(' / ')}
 function contestText(s){const c=s.training?.contests||[];return c.length?'🏆 出場ずみ：'+c.map(i=>['ビギナー杯','モルフ杯','世界選手権'][i]).join('・'):''}
 function displaySnake(s){let p=photoOf(s.g);return `${photoMarkup(s.g,"蛇の写真")}<div><b>${s.locked?'🔒 ':''}#${s.id} ${nameOf(s.g)}</b><small>${s.sex} ${p.label}</small><small>${factorText(s)}</small>${contestText(s)?'<small>'+contestText(s)+'</small>':''}</div>`}
 function toggleSnakeLock(id){const s=data.snakes.find(x=>x.id===id);if(!s)return;s.locked=!s.locked;if(s.locked)saleSelection.delete(id);refresh();msg(s.locked?'🔒 このヘビを ロックしました':'🔓 ロックを はずしました')}
@@ -56,7 +64,7 @@ function renderParents(){
 } 
 function choose(id){if(selection.includes(id)){selection=selection.filter(x=>x!==id)}else if(selection.length<2){selection.push(id)}else{selection=[selection[1],id]}renderParents();applyExternalPhotos()}
 function resetParents(){selection=[];renderParents();applyExternalPhotos()}
-function breed(){if(selection.length!==2)return msg('親を2匹選んでください');if(data.money<30)return msg('コインが足りません。ミッションに挑戦しよう');let a=data.snakes.find(x=>x.id===selection[0]),b=data.snakes.find(x=>x.id===selection[1]);if(a.sex===b.sex)return msg('♂と♀の組み合わせを選んでください');const hazard=['スパイダー','シャンパン','ヒドゥンジンウォマ'];if(hazard.some(g=>(a.g[g]||0)>0)&&hazard.some(g=>(b.g[g]||0)>0))return msg('健康に重大なリスクがある組み合わせのため、この交配はできません');data.money-=30;let baby={id:++data.id,g:genetics(a.g,b.g),sex:Math.random()<.5?'♂':'♀',factors:inheritFactors(a,b)};pending=baby;document.getElementById('result').innerHTML=`<div class="panel outcome"><h2>🥚 卵が生まれた！</h2><div class="egg">🥚</div><button class="primary" onclick="hatch()">卵をタップして孵化させる</button></div>`;refresh()}
+function breed(){if(selection.length!==2)return msg('親を2匹選んでください');if(data.money<30)return msg('コインが足りません。ミッションに挑戦しよう');let a=data.snakes.find(x=>x.id===selection[0]),b=data.snakes.find(x=>x.id===selection[1]);if(a.sex===b.sex)return msg('♂と♀の組み合わせを選んでください');const hazard=['スパイダー','シャンパン','ヒドゥンジンウォマ'];if(hazard.some(g=>(a.g[g]||0)>0)&&hazard.some(g=>(b.g[g]||0)>0))return msg('健康に重大なリスクがある組み合わせのため、この交配はできません');data.money-=30;let baby={id:++data.id,g:genetics(a.g,b.g),sex:Math.random()<.5?'♂':'♀',factors:(hasContestLineage(a)||hasContestLineage(b))?inheritFactors(a,b):[0,0,0],factorLineage:hasContestLineage(a)||hasContestLineage(b)};pending=baby;document.getElementById('result').innerHTML=`<div class="panel outcome"><h2>🥚 卵が生まれた！</h2><div class="egg">🥚</div><button class="primary" onclick="hatch()">卵をタップして孵化させる</button></div>`;refresh()}
 function hatch(){
  if(!pending)return;
  const baby=pending;pending=null;
