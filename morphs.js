@@ -13,13 +13,15 @@ const DOUBLE_HOMO_NAMES={
  'ゴースト|パイド':'ゴーストパイド',
  'パイド|ラベンダーアルビノ':'ドリームシクル'
 };
+function sameGenePair(key,genes){const parts=key.split('|');return parts.length===2&&genes.length===2&&parts.every(k=>genes.includes(k));}
 function homoRecessiveGenes(g){return Object.keys(g).filter(k=>GENES[k]==='rec'&&g[k]===2).sort((a,b)=>a.localeCompare(b,'ja'));}
 function doubleHomoMatches(g){
  const r=homoRecessiveGenes(g),matches=[];
  for(let i=0;i<r.length;i++)for(let j=i+1;j<r.length;j++){
   const genes=[r[i],r[j]];
   const key=genes.slice().sort().join('|');
-  matches.push({key,genes,name:DOUBLE_HOMO_NAMES[key]||genes.join(' × '),named:!!DOUBLE_HOMO_NAMES[key]});
+  const registered=Object.keys(DOUBLE_HOMO_NAMES).find(k=>sameGenePair(k,genes));
+  matches.push({key,genes,name:registered?DOUBLE_HOMO_NAMES[registered]:genes.join(' × '),named:!!registered});
  }
  return matches;
 }
@@ -79,6 +81,19 @@ const USER_NAMED_COMBO_PHOTOS={
  'ファイアフライ':'firefly.jpeg','ピューター':'pewter.jpeg',
  'パープルパッション':'purple_passion.jpeg','キラークラウン':'killer_clown.jpeg'
 };
+// 提供写真：2種類の劣性遺伝子がともに2コピーの場合のみ適用。
+const USER_DOUBLE_HOMO_PHOTOS=[
+ {genes:['ラベンダーアルビノ','パイド'],file:'dreamsicle.jpeg',name:'ドリームシクル'},
+ {genes:['アルビノ','パイド'],file:'albino_pied.jpeg',name:'アルビノパイド'},
+ {genes:['アザンティック','パイド'],file:'axanthic_pied.jpeg',name:'アザンティックパイド'},
+ {genes:['アルビノ','クラウン'],file:'albino_clown.jpeg',name:'アルビノクラウン'},
+ {genes:['アザンティック','クラウン'],file:'axanthic_clown.jpeg',name:'アザンティッククラウン'}
+];
+function userDoubleHomoPhoto(g){
+ const v=visibleGenes(g);
+ const match=USER_DOUBLE_HOMO_PHOTOS.find(item=>sameGenotype(v,Object.fromEntries(item.genes.map(k=>[k,2]))));
+ return match?{src:'assets/user_double_homo/'+match.file,reference:false,exact:true,label:match.name+'の登録写真'}:null;
+}
 function userNamedComboPhoto(g){
  const v=visibleGenes(g);
  const match=NAMED_COMBOS.find(item=>sameGenotype(item.genes,v));
@@ -97,7 +112,7 @@ function userMorphPhoto(g){
  return filename?{src:'assets/user_morphs/'+filename,reference:false,exact:true,label:k+'の登録写真'}:null;
 }
 function photoOf(g){
- const supplied=userNamedComboPhoto(g)||userMorphPhoto(g);if(supplied)return supplied;
+ const supplied=userDoubleHomoPhoto(g)||userNamedComboPhoto(g)||userMorphPhoto(g);if(supplied)return supplied;
  const visible=visibleGenes(g); const genes=Object.keys(visible);
  const cached=window.EXTERNAL_PHOTO_CACHE?.[photoGeneKey(g)];
  if(cached && cached.url)return {src:cached.url,reference:false,exact:true,label:'実在する複合モルフの写真（外部参照）',credit:cached.credit||'',detail:cached.page||'',fallback:cached.fallback||''};
