@@ -24,9 +24,26 @@ function doubleHomoMatches(g){
  return matches;
 }
 function primaryDoubleHomo(g){const arr=doubleHomoMatches(g);return arr.find(x=>x.named)||arr[0]||null;}
+// 有名コンボ名。遺伝子構成が完全一致したときだけ固有名を表示する。
+// レッサー/モハベのBELはBELコンプレックスの代表的な組み合わせのみを収録。
+const NAMED_COMBOS=[
+ {name:'ブルーアイリューシスティック（BEL）',genes:{'レッサー':2}},
+ {name:'ブルーアイリューシスティック（BEL）',genes:{'モハベ':1,'レッサー':1}},
+ {name:'ハイウェイ',genes:{'イエローベリー':1,'グラベル':1}},
+ {name:'フリーウェイ',genes:{'イエローベリー':1,'アスファルト':1}},
+ {name:'パンダパイド',genes:{'ブラックパステル':2,'パイド':2}},
+ {name:'レモンブラスト',genes:{'パステル':1,'ピンストライプ':1}},
+ {name:'ファイアフライ',genes:{'ファイア':1,'パステル':1}},
+ {name:'ピューター',genes:{'パステル':1,'シナモン':1}},
+ {name:'パープルパッション',genes:{'モハベ':1,'ファントム':1}},
+ {name:'キラークラウン',genes:{'パステル':2,'クラウン':2}}
+];
 function nameOf(g){
  const visible=Object.keys(g).filter(k=>GENES[k]==='dom'?g[k]>=1:g[k]===2);
  if(!visible.length)return 'ノーマル';
+ const exact=Object.fromEntries(visible.map(k=>[k,g[k]]));
+ const named=NAMED_COMBOS.find(item=>sameGenotype(item.genes,exact));
+ if(named)return named.name;
  const special=primaryDoubleHomo(g);
  if(!special)return visible.map(k=>(GENES[k]==='dom'&&g[k]===2?'スーパー':'')+k).join(' × ');
  const rest=visible.filter(k=>!special.genes.includes(k));
@@ -53,6 +70,21 @@ const USER_MORPH_PHOTOS={
  'ジェネティックストライプ':'genetic_stripe.jpeg',
  'サンセット':'sunset.jpeg','アシッド':'acid.jpeg'
 };
+// ユーザー提供の有名コンボ写真。NAMED_COMBOS と同じ遺伝子構成で厳密照合。
+const USER_NAMED_COMBO_PHOTOS={
+ 'ブルーアイリューシスティック（BEL）':'bel.jpeg',
+ 'ハイウェイ':'highway.jpeg','フリーウェイ':'freeway.jpeg',
+ 'パンダパイド':'panda_pied.jpeg','レモンブラスト':'lemon_blast.jpeg',
+ 'ファイアフライ':'firefly.jpeg','ピューター':'pewter.jpeg',
+ 'パープルパッション':'purple_passion.jpeg','キラークラウン':'killer_clown.jpeg'
+};
+function userNamedComboPhoto(g){
+ const v=visibleGenes(g);
+ const match=NAMED_COMBOS.find(item=>sameGenotype(item.genes,v));
+ if(!match)return null;
+ const filename=USER_NAMED_COMBO_PHOTOS[match.name];
+ return filename?{src:'assets/user_combos/'+filename,reference:false,exact:true,label:match.name+'の登録写真'}:null;
+}
 function userMorphPhoto(g){
  const v=visibleGenes(g),keys=Object.keys(v);
  if(keys.length===2&&v['アルビノ']===2&&v['アザンティック']===2)
@@ -64,7 +96,7 @@ function userMorphPhoto(g){
  return filename?{src:'assets/user_morphs/'+filename,reference:false,exact:true,label:k+'の登録写真'}:null;
 }
 function photoOf(g){
- const supplied=userMorphPhoto(g);if(supplied)return supplied;
+ const supplied=userNamedComboPhoto(g)||userMorphPhoto(g);if(supplied)return supplied;
  const visible=visibleGenes(g); const genes=Object.keys(visible);
  const cached=window.EXTERNAL_PHOTO_CACHE?.[photoGeneKey(g)];
  if(cached && cached.url)return {src:cached.url,reference:false,exact:true,label:'実在する複合モルフの写真（外部参照）',credit:cached.credit||'',detail:cached.page||'',fallback:cached.fallback||''};
@@ -81,7 +113,7 @@ function photoCaption(g){return photoOf(g).label;}
 
 // 外部参照の候補を検索するためのURL生成（画面上には表示しない）
 function imageSearchUrl(g){
- const traits=Object.entries(g).filter(([k,v])=>GENES[k]==='rec'?v===2:v>0).map(([k,v])=>((GENES[k]!=='rec'&&v===2)?'super ':'')+({GHI:'GHI','アザンティック':'axanthic','ヒドゥンジンウォマ':'hidden gene woma','コンヒュージョン':'confusion','レッドストライプ':'red stripe','イエローベリー':'yellow belly','デザートゴースト':'desert ghost','オレンジドリーム':'orange dream','ファイア':'fire','モハベ':'mojave','エンチ':'enchi','パステル':'pastel','バナナ':'banana','アルビノ':'albino','パイド':'pied','スパーク':'spark','ゴースト':'ghost','クラウン':'clown','レオパード':'leopard','ファントム':'phantom','スパイダー':'spider','レース':'lace','シャンパン':'champagne','シナモン':'cinnamon','ブラックパステル':'black pastel','ピンストライプ':'pinstripe','レッサー':'lesser','スポットノーズ':'spotnose','バンブー':'bamboo','ラベンダーアルビノ':'lavender albino','ジェネティックストライプ':'genetic stripe','サンセット':'sunset','アシッド':'acid'}[k]||k));
+ const traits=Object.entries(g).filter(([k,v])=>GENES[k]==='rec'?v===2:v>0).map(([k,v])=>((GENES[k]!=='rec'&&v===2)?'super ':'')+({GHI:'GHI','アザンティック':'axanthic','ヒドゥンジンウォマ':'hidden gene woma','コンヒュージョン':'confusion','レッドストライプ':'red stripe','イエローベリー':'yellow belly','デザートゴースト':'desert ghost','オレンジドリーム':'orange dream','ファイア':'fire','モハベ':'mojave','エンチ':'enchi','パステル':'pastel','バナナ':'banana','アルビノ':'albino','パイド':'pied','スパーク':'spark','ゴースト':'ghost','クラウン':'clown','レオパード':'leopard','ファントム':'phantom','スパイダー':'spider','レース':'lace','シャンパン':'champagne','シナモン':'cinnamon','ブラックパステル':'black pastel','ピンストライプ':'pinstripe','レッサー':'lesser','スポットノーズ':'spotnose','バンブー':'bamboo','ラベンダーアルビノ':'lavender albino','ジェネティックストライプ':'genetic stripe','サンセット':'sunset','アシッド':'acid','グラベル':'gravel','アスファルト':'asphalt'}[k]||k));
  const query=(traits.length?traits.join(' '):'normal')+' ball python morph';
  return 'https://www.google.com/search?tbm=isch&q='+encodeURIComponent(query);
 }

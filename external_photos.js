@@ -12,7 +12,7 @@ const MORPH_ENGLISH={
  'シナモン':'cinnamon','ブラックパステル':'black pastel','ピンストライプ':'pinstripe',
  'レッサー':'lesser','スポットノーズ':'spotnose','バンブー':'bamboo',
  'ラベンダーアルビノ':'lavender albino','ジェネティックストライプ':'genetic stripe',
- 'サンセット':'sunset','アシッド':'acid'
+ 'サンセット':'sunset','アシッド':'acid','グラベル':'gravel','アスファルト':'asphalt'
 };
 // 出典を確認した実写写真の外部参照候補。画像自体はゲームに同梱していません。
 // 配信先で直リンクが拒否された場合は Wikimedia Commons 検索に切り替えます。
@@ -226,7 +226,7 @@ function applyExternalPhotos(root=document){
  const images=[...root.querySelectorAll('img[data-morph-genotype]')];
  for(const img of images){
   let g;try{g=JSON.parse(decodeURIComponent(img.dataset.morphGenotype))}catch(e){continue}
-  if(userMorphPhoto(g))continue;
+  if(userNamedComboPhoto(g)||userMorphPhoto(g))continue;
   if(!remoteEligible(g))continue;
   // combo_photos.js の完全一致画像が表示されている場合は、画像を置き換えない。
   if(!img.getAttribute('src')?.startsWith('data:image/svg+xml') && !img.getAttribute('src')?.includes('morph_')){
