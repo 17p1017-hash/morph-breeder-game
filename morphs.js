@@ -29,6 +29,7 @@ function primaryDoubleHomo(g){const arr=doubleHomoMatches(g);return arr.find(x=>
 // 有名コンボ名。遺伝子構成が完全一致したときだけ固有名を表示する。
 // レッサー/モハベのBELはBELコンプレックスの代表的な組み合わせのみを収録。
 const NAMED_COMBOS=[
+ {name:'スーパーファイア',genes:{'ファイア':2}},
  {name:'ブルーアイリューシスティック（BEL）',genes:{'レッサー':2}},
  {name:'ブルーアイリューシスティック（BEL）',genes:{'モハベ':1,'レッサー':1}},
  {name:'ハイウェイ',genes:{'イエローベリー':1,'グラベル':1}},
@@ -103,6 +104,8 @@ function userNamedComboPhoto(g){
 }
 function userMorphPhoto(g){
  const v=visibleGenes(g),keys=Object.keys(v);
+ if(keys.length===1&&v['ファイア']===2)
+  return {src:'assets/user_morphs/super_fire.jpeg',reference:false,exact:true,label:'スーパーファイアの登録写真'};
  if(keys.length===2&&v['アルビノ']===2&&v['アザンティック']===2)
   return {src:'assets/user_morphs/snow.webp',reference:false,exact:true,label:'スノーの登録写真'};
  if(keys.length!==1)return null;
