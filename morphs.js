@@ -30,6 +30,8 @@ function primaryDoubleHomo(g){const arr=doubleHomoMatches(g);return arr.find(x=>
 // レッサー/モハベのBELはBELコンプレックスの代表的な組み合わせのみを収録。
 const NAMED_COMBOS=[
  {name:'スーパーファイア',genes:{'ファイア':2}},
+ {name:'バンブルビー',genes:{'パステル':1,'スパイダー':1}},
+ {name:'バットマン',genes:{'レオパード':1,'スポットノーズ':1,'クラウン':2}},
  {name:'ブルーアイリューシスティック（BEL）',genes:{'レッサー':2}},
  {name:'ブルーアイリューシスティック（BEL）',genes:{'モハベ':1,'レッサー':1}},
  {name:'ハイウェイ',genes:{'イエローベリー':1,'グラベル':1}},
@@ -72,7 +74,8 @@ const USER_MORPH_PHOTOS={
  'ラベンダーアルビノ':'lavender_albino.jpeg',
  'ジェネティックストライプ':'genetic_stripe.jpeg',
  'サンセット':'sunset.jpeg','アシッド':'acid.jpeg',
- 'グラベル':'gravel.jpeg','アスファルト':'asphalt.jpeg'
+ 'グラベル':'gravel.jpeg','アスファルト':'asphalt.jpeg',
+ 'パズル':'puzzle.jpeg','TSKアザンティック':'tsk_axanthic.jpeg','モンスーン':'monsoon.jpeg','ハリケーン':'hurricane.jpeg'
 };
 // ユーザー提供の有名コンボ写真。NAMED_COMBOS と同じ遺伝子構成で厳密照合。
 const USER_NAMED_COMBO_PHOTOS={
@@ -80,7 +83,7 @@ const USER_NAMED_COMBO_PHOTOS={
  'ハイウェイ':'highway.jpeg','フリーウェイ':'freeway.jpeg',
  'パンダパイド':'panda_pied.jpeg','レモンブラスト':'lemon_blast.jpeg',
  'ファイアフライ':'firefly.jpeg','ピューター':'pewter.jpeg',
- 'パープルパッション':'purple_passion.jpeg','キラークラウン':'killer_clown.jpeg'
+ 'パープルパッション':'purple_passion.jpeg','キラークラウン':'killer_clown.jpeg','バンブルビー':'bumblebee.jpeg','バットマン':'batman.jpeg'
 };
 // 提供写真：2種類の劣性遺伝子がともに2コピーの場合のみ適用。
 const USER_DOUBLE_HOMO_PHOTOS=[
@@ -104,6 +107,8 @@ function userNamedComboPhoto(g){
 }
 function userMorphPhoto(g){
  const v=visibleGenes(g),keys=Object.keys(v);
+ if(keys.length===1&&v['ハリケーン']===2)
+  return {src:'assets/user_morphs/super_hurricane.jpeg',reference:false,exact:true,label:'スーパーハリケーンの登録写真'};
  if(keys.length===1&&v['ファイア']===2)
   return {src:'assets/user_morphs/super_fire.jpeg',reference:false,exact:true,label:'スーパーファイアの登録写真'};
  if(keys.length===2&&v['アルビノ']===2&&v['アザンティック']===2)
@@ -114,8 +119,18 @@ function userMorphPhoto(g){
  const filename=USER_MORPH_PHOTOS[k];
  return filename?{src:'assets/user_morphs/'+filename,reference:false,exact:true,label:k+'の登録写真'}:null;
 }
+// DEU Reptiles掲載写真（教育目的での使用許諾についてユーザーから申告あり）。
+// URL直参照のため、オフラインでは表示できません。遺伝子構成が完全一致する場合のみ採用。
+const DEU_REMOTE_PHOTOS=[
+ {genes:{'モンスーン':2},url:'https://deu-reptiles.com/wp-content/uploads/2024/11/3-3.png',page:'https://deu-reptiles.com/20241111-1/',name:'モンスーン'},
+ {genes:{'ハリケーン':2},url:'https://deu-reptiles.com/wp-content/uploads/2023/09/1-4.png',page:'https://deu-reptiles.com/202300920-1/',name:'スーパーハリケーン'}
+];
+function deuRemotePhoto(g){
+ const visible=visibleGenes(g),found=DEU_REMOTE_PHOTOS.find(p=>sameGenotype(p.genes,visible));
+ return found?{src:found.url,reference:false,exact:true,label:found.name+'のDEU Reptiles掲載写真（外部参照）',credit:'DEU Reptiles',detail:found.page}:null;
+}
 function photoOf(g){
- const supplied=userDoubleHomoPhoto(g)||userNamedComboPhoto(g)||userMorphPhoto(g);if(supplied)return supplied;
+ const supplied=userDoubleHomoPhoto(g)||userNamedComboPhoto(g)||userMorphPhoto(g)||deuRemotePhoto(g);if(supplied)return supplied;
  const visible=visibleGenes(g); const genes=Object.keys(visible);
  const cached=window.EXTERNAL_PHOTO_CACHE?.[photoGeneKey(g)];
  if(cached && cached.url)return {src:cached.url,reference:false,exact:true,label:'実在する複合モルフの写真（外部参照）',credit:cached.credit||'',detail:cached.page||'',fallback:cached.fallback||''};
@@ -132,7 +147,7 @@ function photoCaption(g){return photoOf(g).label;}
 
 // 外部参照の候補を検索するためのURL生成（画面上には表示しない）
 function imageSearchUrl(g){
- const traits=Object.entries(g).filter(([k,v])=>GENES[k]==='rec'?v===2:v>0).map(([k,v])=>((GENES[k]!=='rec'&&v===2)?'super ':'')+({GHI:'GHI','アザンティック':'axanthic','ヒドゥンジンウォマ':'hidden gene woma','コンヒュージョン':'confusion','レッドストライプ':'red stripe','イエローベリー':'yellow belly','デザートゴースト':'desert ghost','オレンジドリーム':'orange dream','ファイア':'fire','モハベ':'mojave','エンチ':'enchi','パステル':'pastel','バナナ':'banana','アルビノ':'albino','パイド':'pied','スパーク':'spark','ゴースト':'ghost','クラウン':'clown','レオパード':'leopard','ファントム':'phantom','スパイダー':'spider','レース':'lace','シャンパン':'champagne','シナモン':'cinnamon','ブラックパステル':'black pastel','ピンストライプ':'pinstripe','レッサー':'lesser','スポットノーズ':'spotnose','バンブー':'bamboo','ラベンダーアルビノ':'lavender albino','ジェネティックストライプ':'genetic stripe','サンセット':'sunset','アシッド':'acid','グラベル':'gravel','アスファルト':'asphalt'}[k]||k));
+ const traits=Object.entries(g).filter(([k,v])=>GENES[k]==='rec'?v===2:v>0).map(([k,v])=>((GENES[k]!=='rec'&&v===2)?'super ':'')+({GHI:'GHI','アザンティック':'axanthic','ヒドゥンジンウォマ':'hidden gene woma','コンヒュージョン':'confusion','レッドストライプ':'red stripe','イエローベリー':'yellow belly','デザートゴースト':'desert ghost','オレンジドリーム':'orange dream','ファイア':'fire','モハベ':'mojave','エンチ':'enchi','パステル':'pastel','バナナ':'banana','アルビノ':'albino','パイド':'pied','スパーク':'spark','ゴースト':'ghost','クラウン':'clown','レオパード':'leopard','ファントム':'phantom','スパイダー':'spider','レース':'lace','シャンパン':'champagne','シナモン':'cinnamon','ブラックパステル':'black pastel','ピンストライプ':'pinstripe','レッサー':'lesser','スポットノーズ':'spotnose','バンブー':'bamboo','ラベンダーアルビノ':'lavender albino','ジェネティックストライプ':'genetic stripe','サンセット':'sunset','アシッド':'acid','グラベル':'gravel','アスファルト':'asphalt','パズル':'puzzle','TSKアザンティック':'TSK axanthic','モンスーン':'monsoon','ハリケーン':'hurricane'}[k]||k));
  const query=(traits.length?traits.join(' '):'normal')+' ball python morph';
  return 'https://www.google.com/search?tbm=isch&q='+encodeURIComponent(query);
 }

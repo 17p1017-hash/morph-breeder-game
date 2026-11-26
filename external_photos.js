@@ -12,7 +12,7 @@ const MORPH_ENGLISH={
  'シナモン':'cinnamon','ブラックパステル':'black pastel','ピンストライプ':'pinstripe',
  'レッサー':'lesser','スポットノーズ':'spotnose','バンブー':'bamboo',
  'ラベンダーアルビノ':'lavender albino','ジェネティックストライプ':'genetic stripe',
- 'サンセット':'sunset','アシッド':'acid','グラベル':'gravel','アスファルト':'asphalt'
+ 'サンセット':'sunset','アシッド':'acid','グラベル':'gravel','アスファルト':'asphalt','パズル':'puzzle','TSKアザンティック':'TSK axanthic','モンスーン':'monsoon','ハリケーン':'hurricane'
 };
 // 出典を確認した実写写真の外部参照候補。画像自体はゲームに同梱していません。
 // 配信先で直リンクが拒否された場合は Wikimedia Commons 検索に切り替えます。
